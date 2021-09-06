@@ -1,5 +1,6 @@
 import * as mongoose from 'mongoose';
 import { Prop, SchemaFactory, Schema } from '@nestjs/mongoose';
+import { Meme } from 'src/meme/schema/meme.schema';
 
 export type UserDocument = User & mongoose.Document;
 
@@ -15,7 +16,16 @@ export class User {
   password: string;
 
   @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Meme' }] })
-  memeId: string[];
+  uploadedMemes: Meme[];
+
+  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Meme' }] })
+  favourites: Meme[];
+
+  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Meme' }] })
+  likes: Meme[];
+
+  @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Meme' }] })
+  unlikes: Meme[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

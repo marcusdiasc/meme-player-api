@@ -22,7 +22,7 @@ export class AuthService {
   async signUp(signUpDto: SignUpDto): Promise<AuthResponse> {
     const { username, email, passwordOne, passwordTwo } = signUpDto;
 
-    if (this.comparePasswords(passwordOne, passwordTwo)) {
+    if (!this.comparePasswords(passwordOne, passwordTwo)) {
       throw new UnauthorizedException(
         { errorCode: ErrorCode.PASSWORD_DIFFERENT },
         'as senhas não são idênticas',
@@ -89,7 +89,7 @@ export class AuthService {
       if (isSignin) {
         return await bcrypt.compare(passwordOne, passwordTwo);
       } else {
-        return passwordOne == passwordTwo;
+        return passwordOne === passwordTwo;
       }
     } catch (error) {
       throw new InternalServerErrorException();

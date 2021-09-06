@@ -9,11 +9,8 @@ import { UserModule } from './user/user.module';
 
 @Module({
   imports: [
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'public'),
-    }),
     ConfigModule.forRoot(),
-    MongooseModule.forRoot('mongodb://localhost/memeplayer'),
+    MongooseModule.forRoot(process.env.DATABASE_URL),
     AuthModule,
     UserModule,
     MemeModule,

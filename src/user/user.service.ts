@@ -37,11 +37,12 @@ export class UserService {
 
     let user: UserDocument;
     try {
-      user = await this.userModel.create({
+      user = new this.userModel({
         username,
         email,
         password: hashedPw,
       });
+      await user.save();
     } catch (error) {
       throw new InternalServerErrorException();
     }
@@ -61,9 +62,8 @@ export class UserService {
     return user;
   }
 
-  async findById(userId: string): Promise<User> {
-    const user = await this.userModel.findById(userId);
-    console.log(user);
+  async findById(userId: string): Promise<UserDocument> {
+    const user = await this.userModel.findById(userId, '-password');
     return user;
   }
 

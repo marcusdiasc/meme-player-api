@@ -15,6 +15,7 @@ import { User, UserDocument } from 'src/user/schema/user.schema';
 import { MemeService } from './meme.service';
 
 import fs from 'fs';
+import { Meme } from './schema/meme.schema';
 
 @Controller('meme')
 export class MemeController {
@@ -25,9 +26,18 @@ export class MemeController {
   @UseInterceptors(FileInterceptor('file'))
   async postMeme(
     @GetUser() user: UserDocument,
-    @Body('title') name: string,
+    @Body('title') title: string,
     @UploadedFile() file: Express.Multer.File,
+  ): Promise<Meme> {
+    return this.memeService.createMeme(user, title, file);
+  }
+
+  @Post('/like')
+  @UseGuards(JwtAuthGuard)
+  async likeMeme(
+    @GetUser() user: UserDocument,
+    @Body('memeId') memeId: string,
   ): Promise<void> {
-    return this.memeService.createMeme(user, name, file);
+    this.memeService.likeMeme(user, memeId);
   }
 }
