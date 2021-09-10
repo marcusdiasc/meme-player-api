@@ -10,6 +10,7 @@ import {
   Get,
   Param,
   Query,
+  Delete,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { fstat } from 'fs';
@@ -41,6 +42,15 @@ export class MemeController {
     @UploadedFile() file: Express.Multer.File,
   ): Promise<Meme> {
     return await this.memeService.createMeme(user, title, file);
+  }
+
+  @Delete('/')
+  @UseGuards(JwtAuthGuard)
+  async deleteMeme(
+    @GetUser() user: UserDocument,
+    @Body('title') memeId: string,
+  ): Promise<{ _id: string }> {
+    return await this.memeService.deleteMeme(user, memeId);
   }
 
   @Patch('/like')

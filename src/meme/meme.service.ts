@@ -2,6 +2,8 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
@@ -77,6 +79,31 @@ export class MemeService {
     await user.save();
 
     return meme.populate('userId', '_id username');
+  }
+
+  async deleteMeme(
+    user: UserDocument,
+    memeId: string,
+  ): Promise<{ _id: string }> {
+    const meme = await this.memeModel.findById(memeId);
+
+    if (!meme) {
+      throw new NotFoundException({
+        errorCode: ErrorCode.MEME_DOENST_EXISTS,
+      });
+    }
+
+    if (meme.userId.toString() !== user._id.toString()) {
+      throw new UnauthorizedException({
+        errorCode: ErrorCode.ACTION_NOT_ALLOWED,
+      });
+    }
+
+    await meme.delete();
+
+    return {
+      _id: meme._id.toString(),
+    };
   }
 
   async likeMeme(user: UserDocument, memeId: string): Promise<Meme> {
