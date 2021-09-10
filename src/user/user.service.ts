@@ -19,18 +19,20 @@ export class UserService {
 
     const usernameExists = await this.getUserByUsername(username);
     if (usernameExists) {
-      throw new UnauthorizedException(
-        { errorCode: ErrorCode.USERNAME_EXISTS },
-        'nome de usuário já cadastrado',
-      );
+      throw new UnauthorizedException({
+        errorCode: ErrorCode.USERNAME_EXISTS,
+        message: 'Nome já cadastrado',
+        field: 'username',
+      });
     }
 
     const emailExists = await this.getUserByEmail(email);
     if (emailExists) {
-      throw new UnauthorizedException(
-        { errorCode: ErrorCode.EMAIL_EXISTS },
-        'email já cadastrado',
-      );
+      throw new UnauthorizedException({
+        errorCode: ErrorCode.EMAIL_EXISTS,
+        message: 'Email já cadastrado',
+        field: 'email',
+      });
     }
 
     const hashedPw = await this.hashPassword(password);

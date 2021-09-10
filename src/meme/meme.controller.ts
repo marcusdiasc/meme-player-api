@@ -1,10 +1,15 @@
 import {
   Body,
   Controller,
+  HttpCode,
   Post,
+  Patch,
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  Get,
+  Param,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { fstat } from 'fs';
@@ -21,7 +26,13 @@ import { Meme } from './schema/meme.schema';
 export class MemeController {
   constructor(private memeService: MemeService) {}
 
+  @Get('/')
+  async getMemes(@Query('order') order: string): Promise<Meme[]> {
+    return await this.memeService.getMemes(order);
+  }
+
   @Post('/')
+  @HttpCode(201)
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('file'))
   async postMeme(
@@ -29,15 +40,34 @@ export class MemeController {
     @Body('title') title: string,
     @UploadedFile() file: Express.Multer.File,
   ): Promise<Meme> {
-    return this.memeService.createMeme(user, title, file);
+    return await this.memeService.createMeme(user, title, file);
   }
 
-  @Post('/like')
+  @Patch('/like')
   @UseGuards(JwtAuthGuard)
   async likeMeme(
     @GetUser() user: UserDocument,
     @Body('memeId') memeId: string,
-  ): Promise<void> {
-    this.memeService.likeMeme(user, memeId);
+  ): Promise<Meme> {
+    return await this.memeService.likeMeme(user, memeId);
+  }
+
+  @Patch('/unlike')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  async unlikeMeme(
+    @GetUser() user: UserDocument,
+    @Body('memeId') memeId: string,
+  ): Promise<Meme> {
+    return await this.memeService.unlikeMeme(user, memeId);
+  }
+
+  @Patch('/fav')
+  @UseGuards(JwtAuthGuard)
+  async addFav(
+    @GetUser() user: UserDocument,
+    @Body('memeId') memeId: string,
+  ): Promise<{ _id: string }> {
+    return await this.memeService.addFav(user, memeId);
   }
 }

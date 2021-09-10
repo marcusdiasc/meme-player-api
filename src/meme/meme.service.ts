@@ -6,12 +6,13 @@ import {
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Meme, MemeDocument } from './schema/meme.schema';
-import { User, UserDocument } from 'src/user/schema/user.schema';
+import { UserDocument } from 'src/user/schema/user.schema';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as getMP3Duration from 'get-mp3-duration';
 import { ConfigService } from '@nestjs/config';
 import { ErrorCode } from 'src/enum/error-code.enum';
+import { convert } from 'url-slug';
 
 @Injectable()
 export class MemeService {
@@ -19,6 +20,19 @@ export class MemeService {
     private configService: ConfigService,
     @InjectModel(Meme.name) private memeModel: Model<MemeDocument>,
   ) {}
+
+  async getMemes(order: string): Promise<Meme[]> {
+    if (order) {
+      return await this.memeModel
+        .find({})
+        .populate('userId', '_id username')
+        .sort(order);
+    }
+    return await this.memeModel
+      .find()
+      .populate('userId', '_id username')
+      .sort({ points: -1 });
+  }
 
   async createMeme(
     user: UserDocument,
@@ -47,22 +61,25 @@ export class MemeService {
       throw new InternalServerErrorException();
     }
 
-    const filePath = await this.getFilePath(user._id.toString());
-    const fileName = meme._id.toString();
+    const slug = convert(title);
+    meme.slug = slug;
+
+    const filePath = await this.getFilePath(user.username);
+    const fileName = slug;
     const fileDir = `${filePath}/${fileName}.mp3`;
 
     await fs.writeFile(fileDir, file.buffer);
 
-    meme.memeUrl = `http://localhost:3000/sounds/${user._id.toString()}/${fileName}.mp3`;
+    meme.memeUrl = `http://localhost:5000/sounds/${user.username}/${fileName}.mp3`;
 
     await meme.save();
     user.uploadedMemes.push(meme);
     await user.save();
 
-    return meme.depopulate('userId');
+    return meme.populate('userId', '_id username');
   }
 
-  async likeMeme(user: UserDocument, memeId: string): Promise<void> {
+  async likeMeme(user: UserDocument, memeId: string): Promise<Meme> {
     let meme: MemeDocument;
     try {
       meme = await this.memeModel.findById(memeId);
@@ -76,24 +93,105 @@ export class MemeService {
     }
 
     const memesLiked = user.likes as MemeDocument[];
-    const isAlreadyLiked = memesLiked.find((mm) => mm._id === meme._id);
-    if (isAlreadyLiked) {
-      throw new BadRequestException({
-        errorCode: ErrorCode.MEME_ALREADY_LIKED,
-      });
-    }
-    meme.likeCount += 1;
-    user.likes.push(meme);
+    const isAlreadyLiked = memesLiked.find((mm) => {
+      return mm._id.toString() === meme._id.toString();
+    });
 
-    const memesUnliked = user.unlikes as MemeDocument[];
-    const isMemeUnliked = memesUnliked.find((mm) => mm._id === meme._id);
-    if (isMemeUnliked) {
-      meme.unlikeCount -= 1;
-      user.unlikes = memesUnliked.filter((mm) => mm._id !== meme._id);
+    if (isAlreadyLiked) {
+      meme.points -= 1;
+      user.likes = user.likes.filter(
+        (mm: MemeDocument) => mm._id.toString() !== memeId.toString(),
+      );
+    } else {
+      meme.points += 1;
+      user.likes.push(meme);
+      const memesUnliked = user.unlikes as MemeDocument[];
+      const isMemeUnliked = memesUnliked.find(
+        (mm) => mm._id.toString() === meme._id.toString(),
+      );
+      if (isMemeUnliked) {
+        meme.points += 1;
+        user.unlikes = memesUnliked.filter(
+          (mm) => mm._id.toString() !== meme._id.toString(),
+        );
+      }
     }
 
     await user.save();
     await meme.save();
+    return meme.populate('userId', '_id username');
+  }
+
+  async unlikeMeme(user: UserDocument, memeId: string): Promise<Meme> {
+    let meme: MemeDocument;
+    try {
+      meme = await this.memeModel.findById(memeId);
+    } catch (error) {
+      throw new InternalServerErrorException();
+    }
+    if (!meme) {
+      throw new InternalServerErrorException({
+        errorCode: ErrorCode.MEME_DOENST_EXISTS,
+      });
+    }
+
+    const memesUnliked = user.unlikes as MemeDocument[];
+    const isAlreadyUnliked = memesUnliked.find(
+      (mm) => mm._id.toString() === meme._id.toString(),
+    );
+    if (isAlreadyUnliked) {
+      meme.points += 1;
+      user.unlikes = user.unlikes.filter(
+        (mm: MemeDocument) => mm._id.toString() !== memeId.toString(),
+      );
+    } else {
+      meme.points -= 1;
+      user.unlikes.push(meme);
+
+      const memesLiked = user.likes as MemeDocument[];
+      const isMemeLiked = memesLiked.find(
+        (mm) => mm._id.toString() === meme._id.toString(),
+      );
+      if (isMemeLiked) {
+        meme.points -= 1;
+        user.likes = memesLiked.filter(
+          (mm) => mm._id.toString() !== meme._id.toString(),
+        );
+      }
+    }
+
+    await user.save();
+    await meme.save();
+    return meme.populate('userId', '_id username');
+  }
+
+  async addFav(user: UserDocument, memeId: string): Promise<{ _id: string }> {
+    let meme: MemeDocument;
+    try {
+      meme = await this.memeModel.findById(memeId);
+    } catch (error) {
+      throw new InternalServerErrorException();
+    }
+    if (!meme) {
+      throw new InternalServerErrorException({
+        errorCode: ErrorCode.MEME_DOENST_EXISTS,
+      });
+    }
+
+    const isAlreadyFav = user.favourites.find(
+      (m: MemeDocument) => m._id.toString() === memeId,
+    );
+    if (isAlreadyFav) {
+      user.favourites = user.favourites.filter(
+        (m: MemeDocument) => m._id.toString() !== memeId,
+      );
+    } else {
+      user.favourites.push(meme);
+    }
+
+    await user.save();
+
+    return { _id: meme._id.toString() };
   }
 
   private async getFilePath(userId: string): Promise<string> {

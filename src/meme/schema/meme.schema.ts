@@ -10,16 +10,16 @@ export class Meme {
   title: string;
 
   @Prop()
+  slug: string;
+
+  @Prop()
   memeUrl: string;
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User' })
   userId: User;
 
   @Prop({ default: 0 })
-  likeCount: number;
-
-  @Prop({ default: 0 })
-  unlikeCount: number;
+  points: number;
 }
 
 export const MemeSchema = SchemaFactory.createForClass(Meme);

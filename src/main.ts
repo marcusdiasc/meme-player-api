@@ -8,6 +8,6 @@ async function bootstrap() {
   app.enableCors();
   app.useStaticAssets(join(__dirname, '..', 'public'));
   app.setGlobalPrefix('api');
-  await app.listen(3000);
+  await app.listen(5000);
 }
 bootstrap();

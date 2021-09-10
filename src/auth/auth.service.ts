@@ -23,10 +23,11 @@ export class AuthService {
     const { username, email, passwordOne, passwordTwo } = signUpDto;
 
     if (!this.comparePasswords(passwordOne, passwordTwo)) {
-      throw new UnauthorizedException(
-        { errorCode: ErrorCode.PASSWORD_DIFFERENT },
-        'as senhas não são idênticas',
-      );
+      throw new UnauthorizedException({
+        errorCode: ErrorCode.PASSWORD_DIFFERENT,
+        message: 'As senhas são diferentes',
+        field: 'passwordTwo',
+      });
     }
 
     const user = await this.userService.createUser({
@@ -37,12 +38,17 @@ export class AuthService {
 
     const token = await this.generateToken(user._id);
 
-    const authResponse: AuthResponse = {
-      username: username,
+    return {
+      user: {
+        username: user.username,
+        email: user.email,
+        likes: user.likes,
+        unlikes: user.unlikes,
+        favourites: user.favourites,
+        uploadedMemes: user.uploadedMemes,
+      },
       token,
     };
-
-    return authResponse;
   }
 
   async signIn(signInDto: SignInDto): Promise<AuthResponse> {
@@ -75,7 +81,14 @@ export class AuthService {
     const token = await this.generateToken(user._id);
 
     return {
-      username: user.username,
+      user: {
+        username: user.username,
+        email: user.email,
+        likes: user.likes,
+        unlikes: user.unlikes,
+        favourites: user.favourites,
+        uploadedMemes: user.uploadedMemes,
+      },
       token,
     };
   }
