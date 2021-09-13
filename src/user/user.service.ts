@@ -21,7 +21,7 @@ export class UserService {
     if (usernameExists) {
       throw new UnauthorizedException({
         errorCode: ErrorCode.USERNAME_EXISTS,
-        message: 'Nome já cadastrado',
+        message: 'username already exists',
         field: 'username',
       });
     }
@@ -30,7 +30,7 @@ export class UserService {
     if (emailExists) {
       throw new UnauthorizedException({
         errorCode: ErrorCode.EMAIL_EXISTS,
-        message: 'Email já cadastrado',
+        message: 'e-mail already used',
         field: 'email',
       });
     }

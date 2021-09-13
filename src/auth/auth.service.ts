@@ -57,12 +57,11 @@ export class AuthService {
 
     const user = await this.userService.getUserByUsername(username);
     if (!user) {
-      throw new UnauthorizedException(
-        {
-          errorCode: ErrorCode.INVALID_USERNAME,
-        },
-        'nome do usuário inválido',
-      );
+      throw new UnauthorizedException({
+        errorCode: ErrorCode.INVALID_USERNAME,
+        message: 'invalid username',
+        field: 'username',
+      });
     }
 
     const isPwEqual = await this.comparePasswords(
@@ -71,12 +70,11 @@ export class AuthService {
       true,
     );
     if (!isPwEqual) {
-      throw new UnauthorizedException(
-        {
-          errorCode: ErrorCode.INVALID_PASSWORD,
-        },
-        'nome do usuário inválido',
-      );
+      throw new UnauthorizedException({
+        errorCode: ErrorCode.INVALID_PASSWORD,
+        message: 'invalid password',
+        field: 'password',
+      });
     }
 
     const token = await this.generateToken(user._id);
