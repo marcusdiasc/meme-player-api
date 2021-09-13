@@ -40,6 +40,7 @@ export class AuthService {
 
     return {
       user: {
+        _id: user._id.toString(),
         username: user.username,
         email: user.email,
         likes: user.likes,
@@ -82,6 +83,7 @@ export class AuthService {
 
     return {
       user: {
+        _id: user._id.toString(),
         username: user.username,
         email: user.email,
         likes: user.likes,

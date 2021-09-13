@@ -8,7 +8,7 @@ import {
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Meme, MemeDocument } from './schema/meme.schema';
-import { UserDocument } from 'src/user/schema/user.schema';
+import { User, UserDocument } from 'src/user/schema/user.schema';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as getMP3Duration from 'get-mp3-duration';
@@ -21,6 +21,7 @@ export class MemeService {
   constructor(
     private configService: ConfigService,
     @InjectModel(Meme.name) private memeModel: Model<MemeDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {}
 
   async getMemes(order: string): Promise<Meme[]> {
@@ -45,6 +46,8 @@ export class MemeService {
     if (!isValidExtension) {
       throw new BadRequestException({
         erroCode: ErrorCode.INVALID_FILE_EXTENSION,
+        message: 'The meme must be a mp3',
+        field: 'file',
       });
     }
 
@@ -52,6 +55,8 @@ export class MemeService {
     if (!isValidDuration) {
       throw new BadRequestException({
         erroCode: ErrorCode.INVALID_FILE_DURATION,
+        message: 'The file must be at most 20 seconds long.',
+        field: 'file',
       });
     }
 
@@ -72,6 +77,7 @@ export class MemeService {
 
     await fs.writeFile(fileDir, file.buffer);
 
+    meme.absPath = `/sounds/${user.username}/${fileName}.mp3`;
     meme.memeUrl = `http://localhost:5000/sounds/${user.username}/${fileName}.mp3`;
 
     await meme.save();
@@ -99,7 +105,40 @@ export class MemeService {
       });
     }
 
+    const isDeleted = await this.deletefile(meme.absPath);
+
+    if (!isDeleted) {
+      throw new InternalServerErrorException();
+    }
+
+    user.uploadedMemes = user.uploadedMemes.filter(
+      (m) => m._id.toString() !== memeId,
+    );
+
+    await this.userModel.updateMany(
+      { likes: meme._id },
+      {
+        $pull: { likes: meme._id },
+      },
+      { multi: true },
+    );
+    await this.userModel.updateMany(
+      { unlikes: meme._id },
+      {
+        $pull: { unlikes: meme._id },
+      },
+      { multi: true },
+    );
+    await this.userModel.updateMany(
+      { favourites: meme._id },
+      {
+        $pull: { favourites: meme._id },
+      },
+      { multi: true },
+    );
+
     await meme.delete();
+    await user.save();
 
     return {
       _id: meme._id.toString(),
@@ -243,9 +282,21 @@ export class MemeService {
     }
   }
 
+  private async deletefile(filePath: string): Promise<boolean> {
+    try {
+      await fs.unlink(`./public/${filePath}`);
+      return true;
+    } catch (error) {
+      console.log(error);
+      return false;
+    }
+  }
+
   private async isDurationValid(buffer: Buffer): Promise<boolean> {
     const maxDuration = +this.configService.get('FILE_MAX_DURATION');
+
     const duration = await getMP3Duration(buffer);
+    console.log(duration);
     if (duration > maxDuration) {
       return false;
     }
@@ -253,7 +304,6 @@ export class MemeService {
   }
 
   private isExtensionValid(file: Express.Multer.File): boolean {
-    console.log(file);
     if (file.mimetype !== 'audio/mpeg') {
       return false;
     }

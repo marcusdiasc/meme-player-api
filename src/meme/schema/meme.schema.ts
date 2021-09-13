@@ -6,6 +6,8 @@ export type MemeDocument = Meme & mongoose.Document;
 
 @Schema({ timestamps: true })
 export class Meme {
+  _id: string;
+
   @Prop({ required: true })
   title: string;
 
@@ -14,6 +16,9 @@ export class Meme {
 
   @Prop()
   memeUrl: string;
+
+  @Prop()
+  absPath: string;
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User' })
   userId: User;

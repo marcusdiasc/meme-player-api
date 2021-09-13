@@ -20,7 +20,6 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { User, UserDocument } from 'src/user/schema/user.schema';
 import { MemeService } from './meme.service';
 
-import fs from 'fs';
 import { Meme } from './schema/meme.schema';
 
 @Controller('meme')
@@ -48,7 +47,7 @@ export class MemeController {
   @UseGuards(JwtAuthGuard)
   async deleteMeme(
     @GetUser() user: UserDocument,
-    @Body('title') memeId: string,
+    @Body('memeId') memeId: string,
   ): Promise<{ _id: string }> {
     return await this.memeService.deleteMeme(user, memeId);
   }
