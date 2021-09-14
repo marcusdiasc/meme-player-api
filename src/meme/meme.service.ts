@@ -25,16 +25,28 @@ export class MemeService {
   ) {}
 
   async getMemes(order: string): Promise<Meme[]> {
-    if (order) {
+    if (order === 'points') {
       return await this.memeModel
-        .find({})
+        .find()
         .populate('userId', '_id username')
-        .sort(order);
+        .sort({ points: -1 });
     }
-    return await this.memeModel
-      .find()
-      .populate('userId', '_id username')
-      .sort({ points: -1 });
+
+    if (order === 'new') {
+      return await this.memeModel
+        .find()
+        .populate('userId', '_id username')
+        .sort({ createdAt: -1 });
+    }
+
+    if (order === 'trending') {
+      const date = new Date();
+      date.setDate(date.getDate() - 7);
+      return await this.memeModel
+        .find({ createdAt: { $gte: date } })
+        .populate('userId', '_id username')
+        .sort({ points: -1 });
+    }
   }
 
   async createMeme(
@@ -142,6 +154,16 @@ export class MemeService {
 
     return {
       _id: meme._id.toString(),
+    };
+  }
+
+  async downloadMeme(
+    memeId: string,
+  ): Promise<{ path: string; filename: string }> {
+    const meme = await this.memeModel.findById(memeId);
+    return {
+      path: meme.absPath,
+      filename: meme.slug,
     };
   }
 

@@ -11,9 +11,10 @@ import {
   Param,
   Query,
   Delete,
+  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { fstat } from 'fs';
+import { createReadStream, fstat } from 'fs';
 import { diskStorage } from 'multer';
 import { GetUser } from 'src/auth/decorator/get-user.decorator';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
@@ -50,6 +51,17 @@ export class MemeController {
     @Body('memeId') memeId: string,
   ): Promise<{ _id: string }> {
     return await this.memeService.deleteMeme(user, memeId);
+  }
+
+  @Get('/download/:memeId')
+  async downloadMeme(@Res() res, @Param('memeId') memeId) {
+    const { path, filename } = await this.memeService.downloadMeme(memeId);
+    const file = createReadStream('./public' + path);
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Content-Disposition': `attachment; filename="${filename}.mp3"`,
+    });
+    file.pipe(res);
   }
 
   @Patch('/like')
