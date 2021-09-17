@@ -25,8 +25,16 @@ export class AuthService {
     if (!this.comparePasswords(passwordOne, passwordTwo)) {
       throw new UnauthorizedException({
         errorCode: ErrorCode.PASSWORD_DIFFERENT,
-        message: 'As senhas são diferentes',
+        message: "passwords doesn't match",
         field: 'passwordTwo',
+      });
+    }
+
+    if (username.match(/\s/)) {
+      throw new UnauthorizedException({
+        errorCode: ErrorCode.SPACE_NOT_ALLOWED,
+        message: 'space not allowed',
+        field: 'username',
       });
     }
 

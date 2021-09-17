@@ -15,6 +15,7 @@ import * as getMP3Duration from 'get-mp3-duration';
 import { ConfigService } from '@nestjs/config';
 import { ErrorCode } from 'src/enum/error-code.enum';
 import { convert } from 'url-slug';
+import { isAscii } from 'class-validator';
 
 @Injectable()
 export class MemeService {
@@ -24,29 +25,85 @@ export class MemeService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {}
 
-  async getMemes(order: string): Promise<Meme[]> {
-    if (order === 'points') {
-      return await this.memeModel
+  async getMemes(
+    search: string,
+    order: string,
+    page: number,
+  ): Promise<{
+    memes: Meme[];
+    page: number;
+    pages: number;
+  }> {
+    let memes: MemeDocument[] = [];
+    const itemsPerPage = 20;
+    const currPage = page ? page : 0;
+    let pageCount = 1;
+
+    if (search) {
+      const decodedSearch = decodeURI(search);
+      pageCount = await this.memeModel
+        .find({
+          title: new RegExp(decodedSearch, 'i'),
+        })
+        .populate('userId', '_id username')
+        .count();
+      memes = await this.memeModel
+        .find({
+          title: new RegExp(decodedSearch, 'i'),
+        })
+        .populate('userId', '_id username')
+        .limit(itemsPerPage)
+        .skip(itemsPerPage * currPage);
+    } else if (order === 'new') {
+      pageCount = await this.memeModel
         .find()
         .populate('userId', '_id username')
-        .sort({ points: -1 });
-    }
-
-    if (order === 'new') {
-      return await this.memeModel
+        .sort({ createdAt: -1 })
+        .count();
+      memes = await this.memeModel
         .find()
         .populate('userId', '_id username')
-        .sort({ createdAt: -1 });
-    }
-
-    if (order === 'trending') {
+        .sort({ createdAt: -1 })
+        .limit(itemsPerPage)
+        .skip(itemsPerPage * currPage);
+    } else if (order === 'trending') {
       const date = new Date();
       date.setDate(date.getDate() - 7);
-      return await this.memeModel
+      pageCount = await this.memeModel
         .find({ createdAt: { $gte: date } })
         .populate('userId', '_id username')
-        .sort({ points: -1 });
+        .sort({ points: -1 })
+        .count();
+      memes = await this.memeModel
+        .find({ createdAt: { $gte: date } })
+        .populate('userId', '_id username')
+        .sort({ points: -1 })
+        .limit(itemsPerPage)
+        .skip(itemsPerPage * currPage);
+    } else {
+      pageCount = await this.memeModel
+        .find()
+        .populate('userId', '_id username')
+        .sort({ points: -1 })
+        .count();
+      memes = await this.memeModel
+        .find()
+        .populate('userId', '_id username')
+        .sort({ points: -1 })
+        .limit(itemsPerPage)
+        .skip(itemsPerPage * currPage);
     }
+
+    return {
+      memes: memes,
+      page: currPage,
+      pages: Math.ceil(pageCount / itemsPerPage),
+    };
+  }
+
+  async getFav(user: UserDocument): Promise<Meme[]> {
+    await user.populate('favourites');
+    return user.favourites;
   }
 
   async createMeme(
@@ -54,11 +111,21 @@ export class MemeService {
     title: string,
     file: Express.Multer.File,
   ): Promise<Meme> {
+    const isValidTitle = this.isValidTitle(title);
+
+    if (!isValidTitle) {
+      throw new BadRequestException({
+        erroCode: ErrorCode.EMPTY_TITLE,
+        message: 'title is required',
+        field: 'title',
+      });
+    }
+
     const isValidExtension = this.isExtensionValid(file);
     if (!isValidExtension) {
       throw new BadRequestException({
         erroCode: ErrorCode.INVALID_FILE_EXTENSION,
-        message: 'The meme must be a mp3',
+        message: 'the meme must be a mp3',
         field: 'file',
       });
     }
@@ -72,6 +139,17 @@ export class MemeService {
       });
     }
 
+    const slug = convert(title);
+    const userMemes = (await user.populate('uploadedMemes')).uploadedMemes;
+    const isAlreadyCreated = userMemes.find((m) => m.slug === slug);
+    if (isAlreadyCreated) {
+      throw new BadRequestException({
+        erroCode: ErrorCode.ALREADY_CREATED,
+        message: 'meme already created',
+        field: 'title',
+      });
+    }
+
     let meme: MemeDocument;
     try {
       meme = new this.memeModel({ title, userId: user });
@@ -80,7 +158,6 @@ export class MemeService {
       throw new InternalServerErrorException();
     }
 
-    const slug = convert(title);
     meme.slug = slug;
 
     const filePath = await this.getFilePath(user.username);
@@ -280,6 +357,10 @@ export class MemeService {
     await user.save();
 
     return { _id: meme._id.toString() };
+  }
+
+  private isValidTitle(title: string): boolean {
+    return title.trim() !== '';
   }
 
   private async getFilePath(userId: string): Promise<string> {

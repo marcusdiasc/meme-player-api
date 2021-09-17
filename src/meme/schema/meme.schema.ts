@@ -11,7 +11,7 @@ export class Meme {
   @Prop({ required: true })
   title: string;
 
-  @Prop()
+  @Prop({ unique: true })
   slug: string;
 
   @Prop()

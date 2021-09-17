@@ -28,8 +28,22 @@ export class MemeController {
   constructor(private memeService: MemeService) {}
 
   @Get('/')
-  async getMemes(@Query('order') order: string): Promise<Meme[]> {
-    return await this.memeService.getMemes(order);
+  async getMemes(
+    @Query('search') search: string,
+    @Query('order') order: string,
+    @Query('page') page: number,
+  ): Promise<{
+    memes: Meme[];
+    page: number;
+    pages: number;
+  }> {
+    return await this.memeService.getMemes(search, order, page);
+  }
+
+  @Get('/fav')
+  @UseGuards(JwtAuthGuard)
+  async getFav(@GetUser() user: UserDocument): Promise<Meme[]> {
+    return await this.memeService.getFav(user);
   }
 
   @Post('/')
