@@ -1,3 +1,4 @@
+import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
@@ -8,6 +9,10 @@ async function bootstrap() {
   app.enableCors();
   app.useStaticAssets(join(__dirname, '..', 'public'));
   app.setGlobalPrefix('api');
-  await app.listen(5000);
+
+  const config = app.get<ConfigService>(ConfigService);
+  const PORT = config.get<string>('API_PORT');
+
+  await app.listen(PORT);
 }
 bootstrap();

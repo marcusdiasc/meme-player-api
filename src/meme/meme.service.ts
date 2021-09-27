@@ -162,7 +162,9 @@ export class MemeService {
     await fs.writeFile(fileDir, file.buffer);
 
     meme.absPath = `/sounds/${user.username}/${fileName}.mp3`;
-    meme.memeUrl = `http://localhost:5000/sounds/${user.username}/${fileName}.mp3`;
+    const URL = this.configService.get<string>('API_URL');
+    const PORT = this.configService.get<string>('API_PORT');
+    meme.memeUrl = `http://${URL}:${PORT}/sounds/${user.username}/${fileName}.mp3`;
 
     await meme.save();
     user.uploadedMemes.push(meme);
