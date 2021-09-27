@@ -35,7 +35,7 @@ export class MemeService {
     pages: number;
   }> {
     let memes: MemeDocument[] = [];
-    const itemsPerPage = 20;
+    const itemsPerPage = 2;
     const currPage = page ? page : 0;
     let pageCount = 1;
 
@@ -99,11 +99,6 @@ export class MemeService {
       page: currPage,
       pages: Math.ceil(pageCount / itemsPerPage),
     };
-  }
-
-  async getFav(user: UserDocument): Promise<Meme[]> {
-    await user.populate('favourites');
-    return user.favourites;
   }
 
   async createMeme(

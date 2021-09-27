@@ -14,11 +14,10 @@ import {
   Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { createReadStream, fstat } from 'fs';
-import { diskStorage } from 'multer';
+import { createReadStream } from 'fs';
 import { GetUser } from 'src/auth/decorator/get-user.decorator';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
-import { User, UserDocument } from 'src/user/schema/user.schema';
+import { UserDocument } from 'src/user/schema/user.schema';
 import { MemeService } from './meme.service';
 
 import { Meme } from './schema/meme.schema';
@@ -38,12 +37,6 @@ export class MemeController {
     pages: number;
   }> {
     return await this.memeService.getMemes(search, order, page);
-  }
-
-  @Get('/fav')
-  @UseGuards(JwtAuthGuard)
-  async getFav(@GetUser() user: UserDocument): Promise<Meme[]> {
-    return await this.memeService.getFav(user);
   }
 
   @Post('/')

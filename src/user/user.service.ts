@@ -64,6 +64,27 @@ export class UserService {
     return user;
   }
 
+  async getUserProfile(username: string): Promise<User> {
+    const user: User = await this.userModel
+      .findOne({ username: username }, '-password')
+      .populate({
+        path: 'uploadedMemes',
+        populate: {
+          path: 'userId',
+          select: { username: 1 },
+        },
+      })
+      .populate({
+        path: 'favourites',
+        populate: {
+          path: 'userId',
+          select: { username: 1 },
+        },
+      });
+
+    return user;
+  }
+
   async findById(userId: string): Promise<UserDocument> {
     const user = await this.userModel.findById(userId, '-password');
     return user;
