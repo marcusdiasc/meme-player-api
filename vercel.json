@@ -5,7 +5,7 @@
     "MONGODB_URI": "@mongodb_uri",
     "API_PORT": "@api_port",
     "FILE_MAX_DURATION": "@file_duration",
-    "secret_key": "@secret_key"
+    "secret_key": "@secret_keya"
   },
   "builds": [
     {
