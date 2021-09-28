@@ -8,6 +8,9 @@ export type MemeDocument = Meme & mongoose.Document;
 export class Meme {
   _id: string;
 
+  @Prop()
+  awsKey: string;
+
   @Prop({ required: true })
   title: string;
 
@@ -16,9 +19,6 @@ export class Meme {
 
   @Prop()
   memeUrl: string;
-
-  @Prop()
-  absPath: string;
 
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User' })
   userId: User;

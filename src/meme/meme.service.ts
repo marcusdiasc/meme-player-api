@@ -15,7 +15,7 @@ import * as getMP3Duration from 'get-mp3-duration';
 import { ConfigService } from '@nestjs/config';
 import { ErrorCode } from 'src/enum/error-code.enum';
 import { convert } from 'url-slug';
-import { isAscii } from 'class-validator';
+import { S3 } from 'aws-sdk';
 
 @Injectable()
 export class MemeService {
@@ -147,24 +147,28 @@ export class MemeService {
 
     let meme: MemeDocument;
     try {
-      meme = new this.memeModel({ title, userId: user });
+      meme = new this.memeModel({ title, userId: user, slug });
       await meme.save();
     } catch (error) {
       throw new InternalServerErrorException();
     }
 
-    meme.slug = slug;
+    let uploadResult: S3.ManagedUpload.SendData;
+    try {
+      const s3 = new S3();
+      uploadResult = await s3
+        .upload({
+          Bucket: this.configService.get('AWS_PUBLIC_BUCKET_NAME'),
+          Body: file.buffer,
+          Key: `sounds/${user.username}/${slug}.mp3`,
+        })
+        .promise();
+    } catch (error) {
+      throw new InternalServerErrorException();
+    }
 
-    const filePath = await this.getFilePath(user.username);
-    const fileName = slug;
-    const fileDir = `${filePath}/${fileName}.mp3`;
-
-    await fs.writeFile(fileDir, file.buffer);
-
-    meme.absPath = `/sounds/${user.username}/${fileName}.mp3`;
-    const URL = this.configService.get<string>('API_URL');
-    const PORT = this.configService.get<string>('API_PORT');
-    meme.memeUrl = `http://${URL}:${PORT}/sounds/${user.username}/${fileName}.mp3`;
+    meme.memeUrl = uploadResult.Location;
+    meme.awsKey = uploadResult.Key;
 
     await meme.save();
     user.uploadedMemes.push(meme);
@@ -190,12 +194,13 @@ export class MemeService {
         errorCode: ErrorCode.ACTION_NOT_ALLOWED,
       });
     }
-
-    const isDeleted = await this.deletefile(meme.absPath);
-
-    if (!isDeleted) {
-      throw new InternalServerErrorException();
-    }
+    const s3 = new S3();
+    await s3
+      .deleteObject({
+        Bucket: this.configService.get('AWS_PUBLIC_BUCKET_NAME'),
+        Key: meme.awsKey,
+      })
+      .promise();
 
     user.uploadedMemes = user.uploadedMemes.filter(
       (m) => m._id.toString() !== memeId,
@@ -236,7 +241,7 @@ export class MemeService {
   ): Promise<{ path: string; filename: string }> {
     const meme = await this.memeModel.findById(memeId);
     return {
-      path: meme.absPath,
+      path: 'teste',
       filename: meme.slug,
     };
   }
@@ -358,28 +363,6 @@ export class MemeService {
 
   private isValidTitle(title: string): boolean {
     return title.trim() !== '';
-  }
-
-  private async getFilePath(userId: string): Promise<string> {
-    const filePath = path.join(process.cwd(), 'public', 'sounds', userId);
-    const exists = await this.pathExists(filePath);
-    if (!exists) {
-      try {
-        await fs.mkdir(filePath);
-      } catch (error) {
-        throw new InternalServerErrorException();
-      }
-    }
-    return filePath;
-  }
-
-  private async pathExists(filePath: string): Promise<boolean> {
-    try {
-      await fs.access(filePath);
-      return true;
-    } catch {
-      return false;
-    }
   }
 
   private async deletefile(filePath: string): Promise<boolean> {
