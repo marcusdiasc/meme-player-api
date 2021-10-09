@@ -158,7 +158,7 @@ export class MemeService {
       const s3 = new S3();
       uploadResult = await s3
         .upload({
-          Bucket: this.configService.get('AWS_PUBLIC_BUCKET_NAME'),
+          Bucket: this.configService.get<string>('AWS_PUBLIC_BUCKET_NAME'),
           Body: file.buffer,
           Key: `sounds/${user.username}/${slug}.mp3`,
         })
@@ -166,8 +166,9 @@ export class MemeService {
     } catch (error) {
       throw new InternalServerErrorException();
     }
+    console.log(uploadResult);
 
-    meme.memeUrl = uploadResult.Location;
+    meme.memeUrl = `https://sounds.memeplayer.net/${uploadResult.Key}`;
     meme.awsKey = uploadResult.Key;
 
     await meme.save();
@@ -363,16 +364,6 @@ export class MemeService {
 
   private isValidTitle(title: string): boolean {
     return title.trim() !== '';
-  }
-
-  private async deletefile(filePath: string): Promise<boolean> {
-    try {
-      await fs.unlink(`./public/${filePath}`);
-      return true;
-    } catch (error) {
-      console.log(error);
-      return false;
-    }
   }
 
   private async isDurationValid(buffer: Buffer): Promise<boolean> {
