@@ -20,6 +20,6 @@ async function bootstrap() {
     region: configService.get<string>('AWS_REGION'),
   });
 
-  await app.listen(PORT);
+  await app.listen(process.env.PORT || 8080);
 }
 bootstrap();
